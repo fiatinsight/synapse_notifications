@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   class NotificationsController < ActionController::Base
 
     def update

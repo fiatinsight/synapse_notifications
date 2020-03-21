@@ -1,6 +1,4 @@
-# Fiat Notifications
-
-> Currently installed on [Parish.es](https://github.com/fiatinsight/parish-app) and [Cleveland Mixer](https://github.com/fiatinsight/cleveland-mixer/).
+# Synapse Notifications
 
 This engine is designed to be used by [@fiatinsight](https://fiatinsight.com) developers on Rails projects that need to handle complex notifications. It encourages offloading notification creation to highly configurable background jobs that produce in-app, SMS, and email output. It also provides resources for managing flexible, granular notification preferences.
 
@@ -9,24 +7,24 @@ This engine is designed to be used by [@fiatinsight](https://fiatinsight.com) de
 Add this line to your application's `Gemfile`:
 
 ```ruby
-gem 'fiat_notifications'
+gem 'synapse_notifications'
 ```
 
 Then `bundle` and run the required migrations directly by typing:
 
     $ rake db:migrate
 
-Create an initializer at `config/initializers/fiat_notifications.rb` to set some required variables for your implementation:
+Create an initializer at `config/initializers/synapse_notifications.rb` to set some required variables for your implementation:
 
 ```ruby
-FiatNotifications.postmark_api_token = "123abc-xyz"
-FiatNotifications.from_email_address = "test@email.com"
-FiatNotifications.reply_to_email_address = "abcdefg@inbound.email.com"
-FiatNotifications.email_template_id = "1234567"
-FiatNotifications.twilio_auth_token = "123abc-xyz"
-FiatNotifications.twilio_account_sid = "123abc-xyz"
-FiatNotifications.from_phone_number = "+15555551234"
-FiatNotifications.slack_api_token = "xyz-123abc"
+SynapseNotifications.postmark_api_token = "123abc-xyz"
+SynapseNotifications.from_email_address = "test@email.com"
+SynapseNotifications.reply_to_email_address = "abcdefg@inbound.email.com"
+SynapseNotifications.email_template_id = "1234567"
+SynapseNotifications.twilio_auth_token = "123abc-xyz"
+SynapseNotifications.twilio_account_sid = "123abc-xyz"
+SynapseNotifications.from_phone_number = "+15555551234"
+SynapseNotifications.slack_api_token = "xyz-123abc"
 ```
 
 > Note: Currently, the above variables are all required to be set at least to `nil`
@@ -34,7 +32,7 @@ FiatNotifications.slack_api_token = "xyz-123abc"
 Finally, mount the engine in your `routes.rb` file:
 
 ```ruby
-mount FiatNotifications::Engine => "/notifications"
+mount SynapseNotifications::Engine => "/notifications"
 ```
 
 ### Postmark / transactional email
@@ -69,7 +67,7 @@ end
 Notifications can be invoked _from_ any instance of a class within an application, and report _about_ any other class instance _to_ any other class instance. You can create a new notification simply using:
 
 ```ruby
-FiatNotifications::Notification.create(notifier: notifier, creator: creator, observable: observable, action: action)
+SynapseNotifications::Notification.create(notifier: notifier, creator: creator, observable: observable, action: action)
 ```
 
 They accept the following parameters:
@@ -84,13 +82,13 @@ They accept the following parameters:
 
 ### Using a job
 
-The preferred way to create a notification is by using the [`CreateNotificationJob`](https://github.com/fiatinsight/fiat_notifications/blob/master/app/jobs/fiat_notifications/notification/create_notification_job.rb) class. Not only does this allow for delayed execution, but it also triggers a series of conditional actions based on the arguments passed.
+The preferred way to create a notification is by using the [`CreateNotificationJob`](https://github.com/fiatinsight/synapse_notifications/blob/master/app/jobs/synapse_notifications/notification/create_notification_job.rb) class. Not only does this allow for delayed execution, but it also triggers a series of conditional actions based on the arguments passed.
 
 For example, from a `Comment` class with an associated author and recipient record, you could invoke a notification using a delayed job by calling:
 
 ```ruby
 after_commit -> {
-  FiatNotifications::Notification::CreateNotificationJob.set(wait: 5.seconds).perform_later(
+  SynapseNotifications::Notification::CreateNotificationJob.set(wait: 5.seconds).perform_later(
     self,
     self.author,
     self.recipient,
@@ -131,7 +129,7 @@ Per the example, above, you could put:
 
 ```ruby
 after_commit -> {
-  FiatNotifications::Notification::CreateNotificationJob.set(wait: 5.seconds).perform_later(
+  SynapseNotifications::Notification::CreateNotificationJob.set(wait: 5.seconds).perform_later(
     self,
     self.author,
     self.recipient,
@@ -155,7 +153,7 @@ This would try to locate notification preferences for any `User` among the relev
 To hide a notification, you can pass:
 
 ```ruby
-link_to fiat_notifications.notification_path(i, hide: true), method: :patch, remote: true
+link_to synapse_notifications.notification_path(i, hide: true), method: :patch, remote: true
 ```
 
 This runs via JavaScript, and will also attempt to remove the page element tagged with `data-notification-id` and with the value of the notification's ID.
@@ -171,20 +169,20 @@ To mark a notification as viewed, you can update it from the relevant controller
 Then in your controller `show` action, run:
 
 ```ruby
-if params[:notification_id] && FiatNotifications::Notification.find(params[:notification_id]).present?
-  FiatNotifications::Notification.find(params[:notification_id]).update(viewed: 1)
+if params[:notification_id] && SynapseNotifications::Notification.find(params[:notification_id]).present?
+  SynapseNotifications::Notification.find(params[:notification_id]).update(viewed: 1)
 end
 ```
 
 ## Development
 
-To build this gem for the first time, run `gem build fiat_notifications.gemspec` from the project folder.
+To build this gem for the first time, run `gem build synapse_notifications.gemspec` from the project folder.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/fiatinsight/fiat_notifications.
+Bug reports and pull requests are welcome on GitHub at https://github.com/fiatinsight/synapse_notifications.
 
 ## License
 

@@ -1,6 +1,6 @@
-module FiatNotifications
+module SynapseNotifications
   class Engine < ::Rails::Engine
-    isolate_namespace FiatNotifications
+    isolate_namespace SynapseNotifications
 
     initializer :append_migrations do |app|
       unless app.root.to_s.match root.to_s

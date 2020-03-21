@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   class NotificationPreference < ApplicationRecord
     include Tokenable
 

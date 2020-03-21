@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   class Notification < ApplicationRecord
     include Tokenable
 
@@ -15,6 +15,6 @@ module FiatNotifications
     scope :shown, lambda { where(hidden: [0,nil]) }
     scope :seen, lambda { where(viewed: 1) }
 
-    # after_commit -> { FiatNotifications::Notification::RelayJob.set(wait: 5.seconds).perform_later(self) }, on: :create
+    # after_commit -> { SynapseNotifications::Notification::RelayJob.set(wait: 5.seconds).perform_later(self) }, on: :create
   end
 end

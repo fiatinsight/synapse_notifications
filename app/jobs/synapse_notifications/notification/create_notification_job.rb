@@ -1,4 +1,4 @@
-class FiatNotifications::Notification::CreateNotificationJob < FiatNotifications::ApplicationJob
+class SynapseNotifications::Notification::CreateNotificationJob < SynapseNotifications::ApplicationJob
   include ActionView::Helpers::TextHelper
   queue_as :default
 
@@ -22,19 +22,19 @@ class FiatNotifications::Notification::CreateNotificationJob < FiatNotifications
   )
 
     # First, create a notification in the db, at least...
-    notification = FiatNotifications::Notification.create(notifier: notifier, creator: creator, observable: observable, action: action)
+    notification = SynapseNotifications::Notification.create(notifier: notifier, creator: creator, observable: observable, action: action)
 
     # ...then, if it says to notify someone specific
     if notified_type && notified_ids.any?
 
       # Send SMS messages to anyone who should get them
-      if FiatNotifications.twilio_auth_token && FiatNotifications.twilio_account_sid
+      if SynapseNotifications.twilio_auth_token && SynapseNotifications.twilio_account_sid
         notified_ids.each do |i|
           if notified_type.constantize.find(i).phone_number # Make sure they have a phone number
-            if FiatNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, sms: 1) # Make sure they *want* to get an SMS message
+            if SynapseNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, sms: 1) # Make sure they *want* to get an SMS message
               twilio_client = Twilio::REST::Client.new
               twilio_client.api.account.messages.create(
-                from: FiatNotifications.from_phone_number,
+                from: SynapseNotifications.from_phone_number,
                 to: "+1#{notified_type.constantize.find(i).phone_number}",
                 body: "#{sms_body}"
               )
@@ -44,20 +44,20 @@ class FiatNotifications::Notification::CreateNotificationJob < FiatNotifications
       end
 
       # Send emails to anyone who should get them
-      if FiatNotifications.postmark_api_token
+      if SynapseNotifications.postmark_api_token
         notified_ids.each do |i|
           if notified_type.constantize.find(i).email # Make sure they have an email address
-            if FiatNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, email: 1) # Make sure they *want* to get an email
+            if SynapseNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, email: 1) # Make sure they *want* to get an email
 
               if email_template_id
                 template = email_template_id
               else
-                template = FiatNotifications.email_template_id
+                template = SynapseNotifications.email_template_id
               end
 
-              postmark_client = Postmark::ApiClient.new(FiatNotifications.postmark_api_token)
+              postmark_client = Postmark::ApiClient.new(SynapseNotifications.postmark_api_token)
               postmark_client.deliver_with_template(
-              {:from=>FiatNotifications.from_email_address,
+              {:from=>SynapseNotifications.from_email_address,
                :to=>notified_type.constantize.find(i).email,
                :reply_to=>reply_to_address,
                :template_id=>template,
@@ -75,10 +75,10 @@ class FiatNotifications::Notification::CreateNotificationJob < FiatNotifications
       end
 
       # Send Slack messages to anyone who should get them
-      if FiatNotifications.slack_api_token
+      if SynapseNotifications.slack_api_token
         notified_ids.each do |i|
           if notified_type.constantize.find(i).slack_username # Make sure they have a Slack username
-            if FiatNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, slack: 1) # Make sure they *want* to get a Slack message
+            if SynapseNotifications::NotificationPreference.find_by(notifiable: notified_type.constantize.find(i), noticeable: observable, slack: 1) # Make sure they *want* to get a Slack message
 
               client = Slack::Web::Client.new
               link = "#{url}"

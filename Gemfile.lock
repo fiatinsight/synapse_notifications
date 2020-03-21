@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    fiat_notifications (0.1.0)
+    synapse_notifications (0.1.0)
       postmark-rails
       rails (>= 5.2.1)
       slack-ruby-client
@@ -164,7 +164,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  fiat_notifications!
+  synapse_notifications!
   sqlite3
 
 BUNDLED WITH

@@ -1,6 +1,6 @@
-class CreateFiNotifications < ActiveRecord::Migration[5.2]
+class CreateSynapseNotifications < ActiveRecord::Migration[5.2]
   def change
-    create_table :fi_notifications do |t|
+    create_table :synapse_notifications do |t|
       t.string :notifier_type
       t.integer :notifier_id
       t.string :creator_type

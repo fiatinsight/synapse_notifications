@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   module ApplicationHelper
   end
 end

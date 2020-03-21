@@ -1,4 +1,4 @@
-# class FiatNotifications::Notification::RelayJob < FiatNotification::ApplicationJob
+# class SynapseNotifications::Notification::RelayJob < SynapseNotification::ApplicationJob
 #   queue_as :default
 #
 #   def perform(notification)

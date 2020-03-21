@@ -1,7 +1,7 @@
-require "fiat_notifications/engine"
+require "synapse_notifications/engine"
 require 'twilio-ruby'
 
-module FiatNotifications
+module SynapseNotifications
   mattr_accessor :postmark_api_token
   mattr_accessor :from_email_address
   mattr_accessor :email_template_id

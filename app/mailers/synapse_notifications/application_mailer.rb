@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   class ApplicationMailer < ActionMailer::Base
     default from: 'from@example.com'
     layout 'mailer'

@@ -1,3 +1,3 @@
 Rails.application.routes.draw do
-  mount FiatNotifications::Engine => "/fiat_notifications"
+  mount SynapseNotifications::Engine => "/synapse_notifications"
 end

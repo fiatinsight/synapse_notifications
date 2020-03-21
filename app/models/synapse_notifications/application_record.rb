@@ -1,4 +1,4 @@
-module FiatNotifications
+module SynapseNotifications
   class ApplicationRecord < ActiveRecord::Base
     self.abstract_class = true
   end
