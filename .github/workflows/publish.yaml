@@ -1,0 +1,119 @@
+name: PublishToGHPackages
+on:
+  push:
+    branches:
+      - master
+
+env:
+  DYNAMO_TABLE_NAME: ${{ secrets.DYNAMO_TABLE_NAME }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    # Sets the runner to Ruby 2.6
+    - uses: actions/checkout@v2
+    - name: Set up Ruby 2.6
+      uses: actions/setup-ruby@v1
+      with:
+        ruby-version: 2.6.x
+    
+    # Create cache layer
+    - uses: actions/cache@v1
+      with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+    
+    # Bundler dependency
+    - name: Install SQLite
+      run: |
+        sudo apt-get update --fix-missing
+        sudo apt-get install libsqlite3-dev
+    
+    # Setting environment variables here when calculated and used in other steps    
+    - name: Set calculated environment variables
+      run: |
+        GN=$(echo $GITHUB_REPOSITORY | awk -F'/' '{print $2}')
+        echo "::set-env name=GEM_NAME::${GN}"
+        GHO=$(echo $GITHUB_REPOSITORY | awk -F'/' '{print $1}')
+        echo "::set-env name=GH_ORG::${GHO}" 
+    
+    # Configurating aws cli
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.DD_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.DD_AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    # Getting current version from DynamoDB, setting to 0.0.1 if not previously set
+    - name: Set gem name and current version
+      run: |
+        DYNAMO_VERSION=$(aws dynamodb get-item --table-name $DYNAMO_TABLE_NAME --key "{\"packageName\":{\"S\":\"${GEM_NAME}\"}}" --projection-expression "currentVersion" | jq -r '.Item.currentVersion.S')
+        echo "::set-env name=DYNAMO_VERSION::${DYNAMO_VERSION}"
+        CURRENT_VERSION=${DYNAMO_VERSION:-0.0.1.0} 
+        echo "::set-env name=CURRENT_VERSION::${CURRENT_VERSION}"
+        sed -i "s/\(VERSION = \)\(.*\)/\1'${CURRENT_VERSION}'/" lib/${GEM_NAME}/version.rb 
+    
+    - name: Bundle install
+      run: |
+        gem install bundler
+        bundle config path vendor/bundle
+        bundle install --jobs 4 --retry 3
+    
+    # Run db migration on the test environment
+    - name: Migrate database
+      run: bundle exec rails db:migrate RAILS_NEV=test
+
+    # Specifying same bundle path as was previously cached 
+    - name: Run tests
+      run: |
+        bundle config path vendor/bundle
+        bundle exec rails test -v
+    
+    # Increments the current version variable at the scale provided
+    - name: Set new version environment variable
+      run: |
+        NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{if(length($NF+1)>length($NF))$(NF-1)++; $NF=sprintf("%0*d", length($NF), ($NF+1)%(10^length($NF))); print}')
+        echo "::set-env name=NEW_VERSION::$NEW_VERSION"
+    
+    # Locally build the gem from gemspec
+    - name: Build gem locally
+      run: |
+        sed -i "s/\(VERSION = \)\(.*\)/\1'${NEW_VERSION}'/" lib/${GEM_NAME}/version.rb 
+        gem build $GEM_NAME.gemspec
+    
+    # Credential file is used to authenticate to GitHub Packages
+    - name: Create credential file 
+      run: |
+        echo ":github: Bearer ${{ secrets.GITHUB_TOKEN }}" >> ~/.gem/credentials
+        chmod 600 ~/.gem/credentials
+
+    # Pushes the previously-built gem to GitHub Packages
+    - name: Publish to GitHub Packaages
+      run: |
+        gem push --key github --host https://rubygems.pkg.github.com/$GH_ORG $GEM_NAME-$NEW_VERSION.gem
+
+    # DynamoDB will store all dependencies by packageName
+    - name: Push package list to Dynamodb
+      run: |
+        GEMS=$(bundle exec rails r -e test "puts Bundler.load.specs.map{|s| {\"#{s.name}\":{\"S\":\"#{s.version}\"}}}.reduce(:merge).to_json")
+        jq -n \
+          --arg GEM_NAME "$GEM_NAME" \
+          --arg NEW_VERSION "$NEW_VERSION" \
+          --argjson GEMS "$GEMS" \
+          '{"packageName": {"S": $GEM_NAME}, "currentVersion": {"S": $NEW_VERSION}, gems: {"M": $GEMS}}' \
+          > packages.json
+        aws dynamodb put-item --table-name $DYNAMO_TABLE_NAME --item file://packages.json
+
+    # Commit new version to GitHub
+    - name: Commit new version to GitHub
+      run: |
+        git config --global user.email "ci@fiatinsight.com"
+        git config --global user.name "Fiat Insight CI"
+        git add lib/${GEM_NAME}/version.rb
+        git commit -m "Version => ${NEW_VERSION}"
+        git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+        git push github HEAD:${GITHUB_REF}
